@@ -67,9 +67,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
-      - name: Save Current Status to File (Base64)
+      - name: Save Current Status to File
         run: |
-          cat <<EOF > "$CURRENT_STATUS_FILE"
+          cat <<EOF > '$CURRENT_STATUS_FILE'
             ${{ steps.get_project_status.outputs.data }}
           EOF
       - name: Compare Status and Notify Slack
