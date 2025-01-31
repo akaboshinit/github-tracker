@@ -24,6 +24,7 @@ jobs:
         with:
           name: previous-status
           path: .
+        continue-on-error: true
 
       - name: Get GitHub Project Status
         env:
