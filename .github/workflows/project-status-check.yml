@@ -29,7 +29,6 @@ jobs:
       - name: Get GitHub Project Status
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
           # Install required tools
           sudo apt-get update && sudo apt-get install -y jq
@@ -45,6 +44,8 @@ jobs:
             | jq > "$CURRENT_STATUS_FILE"
 
       - name: Compare Status
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
           # Compare with previous status (if available)
           if [ -f "$PREVIOUS_STATUS_FILE" ]; then
@@ -53,16 +54,22 @@ jobs:
             DIFF="No previous status available for comparison."
           fi
 
-          # If differences exist, send Slack notification
-          if [[ "$DIFF" != "" ]]; then
-            echo "Change detected! Sending Slack notification..."
-            MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
+          echo "Change detected! Sending Slack notification..."
+          MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
+          echo "$MESSAGE"
 
-            curl -X POST -H 'Content-type: application/json' \
-              --data "$(jq -n --arg text "$MESSAGE" '{text: $text}')" \
-              $SLACK_WEBHOOK
+          # Check if SLACK_WEBHOOK is set
+          if [[ -z "$SLACK_WEBHOOK" ]]; then
+            echo "SLACK_WEBHOOK is not set. Skipping Slack notification."
           else
-            echo "No changes detected."
+            # If differences exist, send Slack notification
+            if [[ "$DIFF" != "" ]]; then
+              curl -X POST -H 'Content-type: application/json' \
+                --data "$(jq -n --arg text "$MESSAGE" '{text: $text}')" \
+                $SLACK_WEBHOOK
+            else
+              echo "No changes detected."
+            fi
           fi
 
       - name: Upload Current Status (Artifact)
