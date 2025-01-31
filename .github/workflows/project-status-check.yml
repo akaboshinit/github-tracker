@@ -15,8 +15,8 @@ jobs:
 
       - name: Set Variables
         run: |
-          export CURRENT_STATUS_FILE="project_status_current.json"
-          export PREVIOUS_STATUS_FILE="project_status_previous.json"
+          export CURRENT_STATUS_FILE="project_status_current.txt"
+          export PREVIOUS_STATUS_FILE="project_status_previous.txt"
 
       - name: Download Previous Status (Artifact)
         id: download_artifact
@@ -68,7 +68,7 @@ jobs:
 
       - name: Save Current Status to File
         run: |
-          echo '${{ toJSON(steps.get_project_status.outputs.data) }}' > "$CURRENT_STATUS_FILE"
+          echo '${{ steps.get_project_status.outputs.data }}' > "$CURRENT_STATUS_FILE"
 
       - name: Compare Status and Notify Slack
         env:
