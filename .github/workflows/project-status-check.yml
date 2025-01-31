@@ -71,8 +71,9 @@ jobs:
 
       - name: Save Current Status to File (Base64)
         run: |
+          # 現在の状態をJSONとして保存し、Base64形式にエンコード
           echo '${{ steps.fetch_project_status.outputs.data }}' > ${{ env.CURRENT_STATUS_FILE }}
-          base64 ${{ env.CURRENT_STATUS_FILE }} > ${{ env.CURRENT_STATUS_FILE_BASE64 }}
+          base64 "${{ env.CURRENT_STATUS_FILE }}" > "${{ env.CURRENT_STATUS_FILE_BASE64 }}"
 
       - name: Compare Current and Previous Status (Base64)
         id: compare_status
