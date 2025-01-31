@@ -20,7 +20,7 @@ jobs:
 
       - name: Download Previous Status (Artifact)
         id: download_artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: previous-status
           path: .
@@ -65,7 +65,8 @@ jobs:
           fi
 
       - name: Upload Current Status (Artifact)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: previous-status
           path: project_status_current.json
+          overwrite: true
