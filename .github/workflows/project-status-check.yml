@@ -2,9 +2,8 @@ name: Check GitHub Project Status and Notify Slack
 
 on:
   schedule:
-    - cron: "0 * * * *" # 毎時実行（必要に応じて変更可能）
-
-  workflow_dispatch: # 手動での実行も可能にする
+    - cron: "0 * * * *" # 毎時実行
+  workflow_dispatch: # 手動実行も許可
 
 jobs:
   check-project-status:
@@ -14,44 +13,49 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Set Variables
+        run: |
+          export CURRENT_STATUS_FILE="project_status_current.json"
+          export PREVIOUS_STATUS_FILE="project_status_previous.json"
+
+      - name: Download Previous Status (Artifact)
+        id: download_artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: previous-status
+          path: .
+
       - name: Get GitHub Project Status
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
           # Install required tools
-          sudo apt-get update
-          sudo apt-get install -y jq
+          sudo apt-get update && sudo apt-get install -y jq
 
           # GitHub GraphQL API Endpoint
           GRAPHQL_API="https://api.github.com/graphql"
 
-          # Project ID を指定 (例: リポジトリ単位のProject IDまたはV2形式の名前を使って取得)
-          PROJECT_ID="PVT_kwDOABiQ984Am26J"
+          # Query to get current status
+          QUERY='{ "query": "query { node(id: \"YOUR_PROJECT_ID\") { ... on ProjectV2 { items(first: 50) { nodes { id content { ... on Issue { title state } } } } } } }" }'
 
-          # Temporary file for storing previous and current state
-          PREVIOUS_STATUS_FILE=".github/project_status_previous.json"
-          CURRENT_STATUS_FILE=".github/project_status_current.json"
-
-          # Get the current status of the project via GraphQL
-          QUERY='{ "query": "query { node(id: \"'$PROJECT_ID'\") { ... on ProjectV2 { items(first: 50) { nodes { id content { ... on Issue { title state } } } } } } }" }'
-
-          # Run query and save the results
+          # Fetch current status and save to file
           curl -s -H "Authorization: bearer $GITHUB_TOKEN" -X POST -d "$QUERY" $GRAPHQL_API \
             | jq > "$CURRENT_STATUS_FILE"
 
-          # Compare with previous status
-          if [[ -f "$PREVIOUS_STATUS_FILE" ]]; then
+      - name: Compare Status
+        run: |
+          # Compare with previous status (if available)
+          if [ -f "$PREVIOUS_STATUS_FILE" ]; then
             DIFF=$(diff "$PREVIOUS_STATUS_FILE" "$CURRENT_STATUS_FILE" || true)
           else
-            DIFF="No previous state found"
+            DIFF="No previous status available for comparison."
           fi
 
-          # If there's a difference, send a Slack notification
+          # If differences exist, send Slack notification
           if [[ "$DIFF" != "" ]]; then
-            MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
             echo "Change detected! Sending Slack notification..."
-            echo $MESSAGE
+            MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
 
             curl -X POST -H 'Content-type: application/json' \
               --data "$(jq -n --arg text "$MESSAGE" '{text: $text}')" \
@@ -60,5 +64,8 @@ jobs:
             echo "No changes detected."
           fi
 
-          # Save the current status for the next run
-          cp "$CURRENT_STATUS_FILE" "$PREVIOUS_STATUS_FILE"
+      - name: Upload Current Status (Artifact)
+        uses: actions/upload-artifact@v3
+        with:
+          name: previous-status
+          path: project_status_current.json
