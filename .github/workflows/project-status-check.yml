@@ -68,7 +68,7 @@ jobs:
 
       - name: Save Current Status to File
         run: |
-          echo '${{ steps.get_project_status.outputs.data }}' | jq '@json' > "$CURRENT_STATUS_FILE"
+          echo '${{ fromJSON(steps.get_project_status.outputs.data) }}' | jq '@json' > "$CURRENT_STATUS_FILE"
 
       - name: Compare Status and Notify Slack
         env:
