@@ -69,7 +69,7 @@ jobs:
 
       - name: Save Current Status to File (Base64)
         run: |
-          echo '${{ steps.get_project_status.outputs.data }}' | base64 > "$CURRENT_STATUS_FILE"
+          cat '${{ steps.get_project_status.outputs.data }}' | base64 > "$CURRENT_STATUS_FILE"
 
       - name: Compare Status and Notify Slack
         env:
