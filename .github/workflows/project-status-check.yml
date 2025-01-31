@@ -49,8 +49,9 @@ jobs:
 
           # If there's a difference, send a Slack notification
           if [[ "$DIFF" != "" ]]; then
-            echo "Change detected! Sending Slack notification..."
             MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
+            echo "Change detected! Sending Slack notification..."
+            echo $MESSAGE
 
             curl -X POST -H 'Content-type: application/json' \
               --data "$(jq -n --arg text "$MESSAGE" '{text: $text}')" \
