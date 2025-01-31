@@ -69,8 +69,9 @@ jobs:
 
       - name: Save Current Status to File (Base64)
         run: |
-          echo "${{ steps.get_project_status.outputs.data }}" | sed -e 's/(/\\(/g' -e 's/)/\\)/g' > "$CURRENT_STATUS_FILE"
-
+          cat <<EOF > "$CURRENT_STATUS_FILE"
+            ${{ steps.get_project_status.outputs.data }}
+          EOF
       - name: Compare Status and Notify Slack
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
