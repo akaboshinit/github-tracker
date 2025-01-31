@@ -27,7 +27,7 @@ jobs:
           GRAPHQL_API="https://api.github.com/graphql"
 
           # Project ID を指定 (例: リポジトリ単位のProject IDまたはV2形式の名前を使って取得)
-          PROJECT_ID="YOUR_PROJECT_ID_OR_NAME"
+          PROJECT_ID="PVT_kwDOABiQ984Am26J"
 
           # Temporary file for storing previous and current state
           PREVIOUS_STATUS_FILE=".github/project_status_previous.json"
