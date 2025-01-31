@@ -2,26 +2,24 @@ name: Check GitHub Project Status and Notify Slack
 
 on:
   schedule:
-    - cron: "0 * * * *" # 毎時実行
-  workflow_dispatch: # 手動実行を許可
-  push: # プッシュ時にも実行
+    - cron: "0 * * * *"
+  workflow_dispatch:
+  push:
 
 jobs:
   check-project-status:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Repository Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
       - name: Set Variables
-        id: set_vars
         run: |
-          echo "CURRENT_STATUS_FILE=project_status_current.json" >> $GITHUB_ENV
-          echo "CURRENT_STATUS_FILE_BASE64=project_status_current_base64.txt" >> $GITHUB_ENV
-          echo "PRE_STATUS_FILE_BASE64=project_status_previous_base64.txt" >> $GITHUB_ENV
+          export CURRENT_STATUS_FILE="project_status_current.json"
+          export PREVIOUS_STATUS_FILE="project_status_previous.json"
 
-      - name: Download Previous Status (Base64 Artifact)
+      - name: Download Previous Status (Artifact)
         id: download_artifact
         uses: actions/download-artifact@v4
         with:
@@ -29,9 +27,9 @@ jobs:
           path: .
         continue-on-error: true
 
-      - name: Fetch GitHub Project Status
+      - name: Get GitHub Project Status
         uses: octokit/graphql-action@v2.x
-        id: fetch_project_status
+        id: get_project_status
         with:
           query: |
             query getProjects($id: ID!) {
@@ -71,43 +69,36 @@ jobs:
 
       - name: Save Current Status to File (Base64)
         run: |
-          # 現在の状態をJSONとして保存し、Base64形式にエンコード
-          echo '${{ steps.fetch_project_status.outputs.data }}' > ${{ env.CURRENT_STATUS_FILE }}
-          base64 "${{ env.CURRENT_STATUS_FILE }}" > "${{ env.CURRENT_STATUS_FILE_BASE64 }}"
+          echo '${{ steps.get_project_status.outputs.data }}' | sed -e 's/(/\\(/g' -e 's/)/\\)/g' > "$CURRENT_STATUS_FILE"
 
-      - name: Compare Current and Previous Status (Base64)
-        id: compare_status
-        env:
-          CURRENT_STATUS_FILE_BASE64: ${{ env.CURRENT_STATUS_FILE_BASE64 }}
-          PREVIOUS_STATUS_FILE_BASE64: ${{ env.PREVIOUS_STATUS_FILE_BASE64 }}
-        run: |
-          # 初回実行時のため、比較ファイルが存在しない場合の処理
-          if [ ! -f "${PREVIOUS_STATUS_FILE_BASE64}" ]; then
-            echo "No previous status file found. Creating baseline."
-            echo "DIFF='First run - no comparison available.'" >> $GITHUB_ENV
-          else
-            # Base64ファイル同士を比較
-            DIFF=$(diff "${PREVIOUS_STATUS_FILE_BASE64}" "${CURRENT_STATUS_FILE_BASE64}" || true)
-            echo "DIFF=${DIFF}" >> $GITHUB_ENV
-          fi
-
-      - name: Notify Slack on Changes
+      - name: Compare Status and Notify Slack
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
-          # 差分がある場合のみSlackに通知
-          if [[ "${DIFF}" != "" && "${DIFF}" != "First run - no comparison available." ]]; then
-            echo "Change detected! Notifying Slack."
-            MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
-            curl -X POST -H 'Content-type: application/json' \
-              --data "{\"text\": \"$MESSAGE\"}" "$SLACK_WEBHOOK"
+          # Compare current and previous status
+          if [ -f "$PREVIOUS_STATUS_FILE" ]; then
+            DIFF=$(diff "$PREVIOUS_STATUS_FILE" "$CURRENT_STATUS_FILE" || true)
           else
-            echo "No changes detected, or this is the first comparison."
+            DIFF="No previous status available for comparison."
           fi
 
-      - name: Upload Current Status (Base64)
+          # Slack notification
+          if [[ -z "$SLACK_WEBHOOK" ]]; then
+            echo "SLACK_WEBHOOK is not set. Skipping Slack notification."
+          else
+            if [[ "$DIFF" != "" ]]; then
+              echo "Change detected! Sending Slack notification..."
+              MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
+              curl -X POST -H 'Content-type: application/json' \
+                --data "{\"text\": \"$MESSAGE\"}" $SLACK_WEBHOOK
+            else
+              echo "No changes detected."
+            fi
+          fi
+
+      - name: Upload Current Status (Artifact)
         uses: actions/upload-artifact@v4
         with:
           name: previous-status
-          path: ${{ env.CURRENT_STATUS_FILE_BASE64 }}
+          path: project_status_current.json
           overwrite: true
