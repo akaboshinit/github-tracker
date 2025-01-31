@@ -69,7 +69,7 @@ jobs:
 
       - name: Save Current Status to File
         run: |
-          cat <<EOF > '$CURRENT_STATUS_FILE'
+          cat <<EOF > $CURRENT_STATUS_FILE
             ${{ steps.get_project_status.outputs.data }}
           EOF
           ls -l # ファイルの存在確認のため
