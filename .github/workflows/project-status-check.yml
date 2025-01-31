@@ -1,0 +1,63 @@
+name: Check GitHub Project Status and Notify Slack
+
+on:
+  schedule:
+    - cron: "0 * * * *" # 毎時実行（必要に応じて変更可能）
+
+  workflow_dispatch: # 手動での実行も可能にする
+
+jobs:
+  check-project-status:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Get GitHub Project Status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          # Install required tools
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+          # GitHub GraphQL API Endpoint
+          GRAPHQL_API="https://api.github.com/graphql"
+
+          # Project ID を指定 (例: リポジトリ単位のProject IDまたはV2形式の名前を使って取得)
+          PROJECT_ID="YOUR_PROJECT_ID_OR_NAME"
+
+          # Temporary file for storing previous and current state
+          PREVIOUS_STATUS_FILE=".github/project_status_previous.json"
+          CURRENT_STATUS_FILE=".github/project_status_current.json"
+
+          # Get the current status of the project via GraphQL
+          QUERY='{ "query": "query { node(id: \"'$PROJECT_ID'\") { ... on ProjectV2 { items(first: 50) { nodes { id content { ... on Issue { title state } } } } } } }" }'
+
+          # Run query and save the results
+          curl -s -H "Authorization: bearer $GITHUB_TOKEN" -X POST -d "$QUERY" $GRAPHQL_API \
+            | jq > "$CURRENT_STATUS_FILE"
+
+          # Compare with previous status
+          if [[ -f "$PREVIOUS_STATUS_FILE" ]]; then
+            DIFF=$(diff "$PREVIOUS_STATUS_FILE" "$CURRENT_STATUS_FILE" || true)
+          else
+            DIFF="No previous state found"
+          fi
+
+          # If there's a difference, send a Slack notification
+          if [[ "$DIFF" != "" ]]; then
+            echo "Change detected! Sending Slack notification..."
+            MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
+
+            curl -X POST -H 'Content-type: application/json' \
+              --data "$(jq -n --arg text "$MESSAGE" '{text: $text}')" \
+              $SLACK_WEBHOOK
+          else
+            echo "No changes detected."
+          fi
+
+          # Save the current status for the next run
+          cp "$CURRENT_STATUS_FILE" "$PREVIOUS_STATUS_FILE"
