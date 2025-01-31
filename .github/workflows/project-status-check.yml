@@ -2,8 +2,9 @@ name: Check GitHub Project Status and Notify Slack
 
 on:
   schedule:
-    - cron: "0 * * * *" # 毎時実行
-  workflow_dispatch: # 手動実行も許可
+    - cron: "0 * * * *"
+  workflow_dispatch:
+  push:
 
 jobs:
   check-project-status:
