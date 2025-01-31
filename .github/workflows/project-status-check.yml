@@ -14,11 +14,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set Variables
-        run: |
-          export CURRENT_STATUS_FILE="project_status_current.json"
-          export PREVIOUS_STATUS_FILE="project_status_previous.json"
-
       - name: Download Previous Status (Artifact)
         id: download_artifact
         uses: actions/download-artifact@v4
@@ -69,19 +64,17 @@ jobs:
 
       - name: Save Current Status to File
         run: |
-          cat <<EOF > $CURRENT_STATUS_FILE
+          cat <<EOF > ./project_status_current.json
             ${{ steps.get_project_status.outputs.data }}
           EOF
-          ls -l # ファイルの存在確認のため
-          cat $CURRENT_STATUS_FILE # デバッグ: ファイルの内容をコンソールに表示
 
       - name: Compare Status and Notify Slack
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
           # Compare current and previous status
-          if [ -f "$PREVIOUS_STATUS_FILE" ]; then
-            DIFF=$(diff "$PREVIOUS_STATUS_FILE" "$CURRENT_STATUS_FILE" || true)
+          if [ -f ./project_status_previous.json ]; then
+            DIFF=$(diff ./project_status_previous.json ./project_status_current.json || true)
           else
             DIFF="No previous status available for comparison."
           fi
@@ -104,5 +97,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: previous-status
-          path: $CURRENT_STATUS_FILE
+          path: ./project_status_current.json
           overwrite: true
