@@ -34,13 +34,27 @@ jobs:
             query getProjects($id: ID!) {
               node(id: $id) {
                 ... on ProjectV2 {
-                  items(first: 50) {
+                  items(first: 100) {
                     nodes {
                       id
-                      content {
-                        ... on Issue {
-                          title
-                          state
+                      fieldValues(first: 20) {
+                        nodes {
+                          ... on ProjectV2ItemFieldTextValue {
+                            field {
+                              ... on ProjectV2FieldCommon {
+                                name
+                              }
+                            }
+                            text
+                          }
+                          ... on ProjectV2ItemFieldSingleSelectValue {
+                            name
+                            field {
+                              ... on ProjectV2FieldCommon {
+                                name
+                              }
+                            }
+                          }
                         }
                       }
                     }
@@ -48,7 +62,7 @@ jobs:
                 }
               }
             }
-          variables: '{"id": "PVT_kwDOABiQ984Am26J"}'
+          variables: '{"id": "PVT_kwDOABiQ984AiUMh"}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
