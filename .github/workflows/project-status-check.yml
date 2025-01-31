@@ -27,46 +27,55 @@ jobs:
         continue-on-error: true
 
       - name: Get GitHub Project Status
+        uses: octokit/graphql-action@v2.x
+        id: get_project_status # Outputsを参照するためにIDを設定
+        with:
+          query: |
+            query getProjects($id: ID!) {
+              node(id: $id) {
+                ... on ProjectV2 {
+                  items(first: 50) {
+                    nodes {
+                      id
+                      content {
+                        ... on Issue {
+                          title
+                          state
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          id: "PVT_kwDOABiQ984Am26J"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save Current Status to File
         run: |
-          # Install required tools
-          sudo apt-get update && sudo apt-get install -y jq
+          echo '${{ steps.get_project_status.outputs.data }}' > "$CURRENT_STATUS_FILE"
 
-          # GitHub GraphQL API Endpoint
-          GRAPHQL_API="https://api.github.com/graphql"
-
-          # Query to get current status
-          QUERY='{ "query": "query { node(id: \"YOUR_PROJECT_ID\") { ... on ProjectV2 { items(first: 50) { nodes { id content { ... on Issue { title state } } } } } } }" }'
-
-          # Fetch current status and save to file
-          curl -s -H "Authorization: bearer $GITHUB_TOKEN" -X POST -d "$QUERY" $GRAPHQL_API \
-            | jq > "$CURRENT_STATUS_FILE"
-
-      - name: Compare Status
+      - name: Compare Status and Notify Slack
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
-          # Compare with previous status (if available)
+          # Compare current and previous status
           if [ -f "$PREVIOUS_STATUS_FILE" ]; then
             DIFF=$(diff "$PREVIOUS_STATUS_FILE" "$CURRENT_STATUS_FILE" || true)
           else
             DIFF="No previous status available for comparison."
           fi
 
-          echo "Change detected! Sending Slack notification..."
-          MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
-          echo "$MESSAGE"
-
-          # Check if SLACK_WEBHOOK is set
+          # Slack notification
           if [[ -z "$SLACK_WEBHOOK" ]]; then
             echo "SLACK_WEBHOOK is not set. Skipping Slack notification."
           else
-            # If differences exist, send Slack notification
             if [[ "$DIFF" != "" ]]; then
+              echo "Change detected! Sending Slack notification..."
+              MESSAGE="GitHub Project Status Changed:\n\`\`\`${DIFF}\`\`\`"
               curl -X POST -H 'Content-type: application/json' \
-                --data "$(jq -n --arg text "$MESSAGE" '{text: $text}')" \
-                $SLACK_WEBHOOK
+                --data "{\"text\": \"$MESSAGE\"}" $SLACK_WEBHOOK
             else
               echo "No changes detected."
             fi
