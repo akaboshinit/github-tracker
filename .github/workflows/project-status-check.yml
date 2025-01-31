@@ -48,7 +48,7 @@ jobs:
                 }
               }
             }
-          id: "PVT_kwDOABiQ984Am26J"
+          variables: '{"id": "PVT_kwDOABiQ984Am26J"}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
