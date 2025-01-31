@@ -58,7 +58,7 @@ jobs:
                 }
               }
             }
-          variables: '{"id": "PVT_kwDOABiQ984AiUMh"}'
+          variables: '{"id": "PVT_kwHOBB7v1s4AxMk7"}'
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
