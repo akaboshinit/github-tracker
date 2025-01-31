@@ -72,6 +72,8 @@ jobs:
           cat <<EOF > '$CURRENT_STATUS_FILE'
             ${{ steps.get_project_status.outputs.data }}
           EOF
+          ls -l # ファイルの存在確認のため
+          cat $CURRENT_STATUS_FILE # デバッグ: ファイルの内容をコンソールに表示
 
       - name: Compare Status and Notify Slack
         env:
@@ -102,5 +104,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: previous-status
-          path: project_status_current.json
+          path: $CURRENT_STATUS_FILE
           overwrite: true
