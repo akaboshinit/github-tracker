@@ -72,6 +72,7 @@ jobs:
           cat <<EOF > '$CURRENT_STATUS_FILE'
             ${{ steps.get_project_status.outputs.data }}
           EOF
+
       - name: Compare Status and Notify Slack
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
