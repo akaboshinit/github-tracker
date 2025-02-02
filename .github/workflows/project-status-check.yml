@@ -76,7 +76,7 @@ jobs:
           if [ -f ./project_status_previous.json ]; then
             DIFF=$(diff ./project_status_previous.json ./project_status_current.json || true)
           else
-            DIFF="No previous status available for comparison."
+            # DIFF="No previous status available for comparison."
           fi
 
           # Slack notification
